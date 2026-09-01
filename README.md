@@ -12,6 +12,17 @@ The skill intentionally does not expose hidden reasoning, modify source code, co
 
 ## Install
 
+### LLM-assisted installation
+
+Give your LLM coding agent this prompt:
+
+```text
+Read https://raw.githubusercontent.com/sitex/llm-skills/main/INSTALL.md and follow it to install reflect.
+```
+
+The instruction file limits the operation to the user skill directory, requires
+source validation, and prevents silent replacement of an existing installation.
+
 ### Codex skill installer
 
 Invoke `$skill-installer` in Codex and ask it to install:
@@ -50,7 +61,9 @@ Run the repository verification gate:
 ./scripts/verify
 ```
 
-The gate checks skill structure, unfinished placeholders, metadata, local-path leaks, and whitespace. When the Codex `skill-creator` validator is installed, the gate runs it as an additional check.
+The gate checks skill structure, the LLM installation contract, unfinished
+placeholders, metadata, local-path leaks, and whitespace. When the Codex
+`skill-creator` validator is installed, the gate runs it as an additional check.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution requirements.
 

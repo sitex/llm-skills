@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 skills_root="$repo_root/skills"
+install_guide="$repo_root/INSTALL.md"
 
 if [[ ! -d "$skills_root" ]]; then
   echo "verify: missing skills directory" >&2
@@ -66,7 +67,31 @@ if (( skill_count == 0 )); then
   exit 1
 fi
 
-if rg -n '[[:blank:]]+$' "$repo_root/README.md" "$repo_root/CONTRIBUTING.md" "$repo_root/AGENTS.md" "$skills_root"; then
+[[ -f "$install_guide" ]] || {
+  echo "verify: missing INSTALL.md" >&2
+  exit 1
+}
+
+required_install_markers=(
+  'https://github.com/sitex/llm-skills/tree/main/skills/reflect'
+  "\$HOME/.agents/skills/reflect"
+  "\$skill-installer"
+  'Never overwrite an existing installation'
+  'quick_validate.py'
+)
+for marker in "${required_install_markers[@]}"; do
+  rg -F -q "$marker" "$install_guide" || {
+    echo "verify: INSTALL.md is missing required instruction: $marker" >&2
+    exit 1
+  }
+done
+
+if rg -n '/home/[^/]+|/Users/[^/]+' "$install_guide"; then
+  echo "verify: INSTALL.md contains a machine-specific absolute path" >&2
+  exit 1
+fi
+
+if rg -n '[[:blank:]]+$' "$repo_root/README.md" "$repo_root/CONTRIBUTING.md" "$repo_root/AGENTS.md" "$install_guide" "$skills_root"; then
   echo "verify: trailing whitespace found" >&2
   exit 1
 fi
