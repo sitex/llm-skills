@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reflect"
+  short_description: "Turn work evidence into reusable instructions"
+  default_prompt: "Use $reflect to propose reusable learnings from this session."

@@ -3,3 +3,7 @@
 .claude/settings.local.json
 thoughts/
 node_modules/
+.env
+.env.*
+!.env.example
+.test-workspaces/

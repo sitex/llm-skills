@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+skills_root="$repo_root/skills"
+
+if [[ ! -d "$skills_root" ]]; then
+  echo "verify: missing skills directory" >&2
+  exit 1
+fi
+
+skill_count=0
+for skill_dir in "$skills_root"/*; do
+  [[ -d "$skill_dir" ]] || continue
+  skill_count=$((skill_count + 1))
+
+  skill_name=$(basename "$skill_dir")
+  skill_file="$skill_dir/SKILL.md"
+  metadata_file="$skill_dir/agents/openai.yaml"
+
+  [[ -f "$skill_file" ]] || {
+    echo "verify: $skill_name is missing SKILL.md" >&2
+    exit 1
+  }
+
+  [[ "$(head -n 1 "$skill_file")" == "---" ]] || {
+    echo "verify: $skill_name is missing YAML frontmatter" >&2
+    exit 1
+  }
+
+  declared_name=$(sed -n '/^name:/ { s/^name:[[:space:]]*//; p; q; }' "$skill_file")
+  [[ "$declared_name" == "$skill_name" ]] || {
+    echo "verify: $skill_name has mismatched frontmatter name: $declared_name" >&2
+    exit 1
+  }
+
+  rg -q '^description:[[:space:]]*[^[:space:]].*$' "$skill_file" || {
+    echo "verify: $skill_name is missing a description" >&2
+    exit 1
+  }
+
+  if rg -n '\[TODO|TODO:' "$skill_dir"; then
+    echo "verify: $skill_name contains unfinished placeholders" >&2
+    exit 1
+  fi
+
+  if rg -n '/home/[^/]+|/Users/[^/]+' "$skill_dir"; then
+    echo "verify: $skill_name contains a machine-specific absolute path" >&2
+    exit 1
+  fi
+
+  if [[ -f "$metadata_file" ]]; then
+    rg -q '^interface:' "$metadata_file" || {
+      echo "verify: $skill_name metadata is missing interface" >&2
+      exit 1
+    }
+    rg -F -q "\$$skill_name" "$metadata_file" || {
+      echo "verify: $skill_name default prompt must name the skill" >&2
+      exit 1
+    }
+  fi
+done
+
+if (( skill_count == 0 )); then
+  echo "verify: no skills found" >&2
+  exit 1
+fi
+
+if rg -n '[[:blank:]]+$' "$repo_root/README.md" "$repo_root/CONTRIBUTING.md" "$repo_root/AGENTS.md" "$skills_root"; then
+  echo "verify: trailing whitespace found" >&2
+  exit 1
+fi
+
+codex_root="${CODEX_HOME:-$HOME/.codex}"
+official_validator="$codex_root/skills/.system/skill-creator/scripts/quick_validate.py"
+if [[ -f "$official_validator" ]]; then
+  for skill_dir in "$skills_root"/*; do
+    [[ -d "$skill_dir" ]] || continue
+    python3 "$official_validator" "$skill_dir"
+  done
+fi
+
+git -C "$repo_root" diff --check
+echo "verify: OK ($skill_count skill)"
